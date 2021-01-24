@@ -1,0 +1,117 @@
+from django.db.models import (
+    CASCADE,
+    Model,
+    OneToOneField,
+    ForeignKey,
+    CharField,
+    TextField,
+    BooleanField,
+    DateField,
+    EmailField
+)
+from django.contrib.auth.models import User
+
+from core.abstract import Auditable
+
+
+class Landlord(Auditable):
+    """Landlord details, it may be company or person"""
+
+    name = CharField(max_length=100)
+    email = EmailField()
+    mobile = CharField(max_length=20)
+
+    def __str__(self):
+        return self.name
+
+
+class Building(Auditable):
+    """Building details of landlord"""
+
+    name = CharField(max_length=200)
+    address = CharField(max_length=200)
+    number = CharField(max_length=100)
+    owner = ForeignKey(Landlord, related_name='buildings', on_delete=CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
+class Apartment(Auditable):
+    """Apartment/flat details"""
+
+    number = CharField(max_length=100)
+    address = CharField(max_length=200)
+    building = ForeignKey(Building, related_name='apartments', on_delete=CASCADE)
+    is_vacant = BooleanField(default=True)
+
+    def set_as_occupied(self):
+        """Set apartment as occupied"""
+        self.is_vacant = False
+        self.save()
+
+    def set_as_vacant(self):
+        """Set apartment as vacant"""
+        self.is_vacant = True
+        self.save
+
+    def __str__(self):
+        return self.number
+
+
+class Tenant(Auditable):
+    """Tenant details"""
+
+    name = CharField(max_length=100)
+    email = EmailField()
+    mobile = CharField(max_length=20)
+    is_active = BooleanField(default=True)
+    apartment = ForeignKey(Apartment, related_name='tenants', on_delete=CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
+class UserProfile(Model):
+
+    user = OneToOneField(User, on_delete=CASCADE, related_name='profile')
+    tenant = OneToOneField(
+        Tenant,
+        on_delete=CASCADE,
+        related_name='profile',
+        blank=True,
+        null=True
+    )
+    landlord = OneToOneField(
+        Landlord,
+        on_delete=CASCADE,
+        related_name='profile',
+        blank=True,
+        null=True
+    )
+
+
+class Contract(Auditable):
+
+    apartment = ForeignKey(Apartment, related_name='apartment_contracts', on_delete=CASCADE)
+    tenant = ForeignKey(Tenant, related_name='tenant_contracts', on_delete=CASCADE)
+    start_date = DateField()
+    end_date = DateField()
+    remarks = TextField()
+    rent_collection = CharField(
+        max_length=100,
+        choices=[
+            ('month', 'Every Month'),
+            ('2months', 'Every Two Months'),
+            ('3months', 'Every Three Months'),
+            ('6months', 'Every Six Months')
+        ]
+    )
+    is_valid = BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('apartment', 'tenant')
+
+
+class Payment(Auditable):
+    pass
